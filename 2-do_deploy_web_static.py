@@ -1,30 +1,27 @@
-#!/usr/bin/python3
-"""
-Fabric script based on the file 1-pack_web_static.py that distributes an
-archive to the web servers
-"""
+#!/usr/bin/env bash
+# Bash script that sets up web servers for the deployment of web_static
+sudo apt-get update
+sudo apt-get -y install nginx
+sudo ufw allow 'Nginx HTTP'
 
-from fabric.api import put, run, env
-from os.path import exists
-env.hosts = ['142.44.167.228', '144.217.246.195']
+sudo mkdir -p /data/
+sudo mkdir -p /data/web_static/
+sudo mkdir -p /data/web_static/releases/
+sudo mkdir -p /data/web_static/shared/
+sudo mkdir -p /data/web_static/releases/test/
+sudo touch /data/web_static/releases/test/index.html
+sudo echo "<html>
+  <head>
+  </head>
+  <body>
+    Holberton School
+  </body>
+</html>" | sudo tee /data/web_static/releases/test/index.html
 
+sudo ln -s -f /data/web_static/releases/test/ /data/web_static/current
 
-def do_deploy(archive_path):
-    """distributes an archive to the web servers"""
-    if exists(archive_path) is False:
-        return False
-    try:
-        file_n = archive_path.split("/")[-1]
-        no_ext = file_n.split(".")[0]
-        path = "/data/web_static/releases/"
-        put(archive_path, '/tmp/')
-        run('mkdir -p {}{}/'.format(path, no_ext))
-        run('tar -xzf /tmp/{} -C {}{}/'.format(file_n, path, no_ext))
-        run('rm /tmp/{}'.format(file_n))
-        run('mv {0}{1}/web_static/* {0}{1}/'.format(path, no_ext))
-        run('rm -rf {}{}/web_static'.format(path, no_ext))
-        run('rm -rf /data/web_static/current')
-        run('ln -s {}{}/ /data/web_static/current'.format(path, no_ext))
-        return True
-    except:
-        return False
+sudo chown -R ubuntu:ubuntu /data/
+
+sudo sed -i '/listen 80 default_server/a location /hbnb_static { alias /data/web_static/current/;}' /etc/nginx/sites-enabled/default
+
+sudo service nginx restart
